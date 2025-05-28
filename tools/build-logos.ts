@@ -1,42 +1,46 @@
-import { encode } from '@replytechnologies/zpl-image-convert'
+import { encode } from './zpl-tools'
 import sharp from 'sharp'
 import { glob } from 'glob'
 import { basename, extname, join } from 'node:path'
-import { mkdirSync, writeFileSync, readFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs'
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 
-async function rasterise (src: string): Promise<Buffer> {
-  // If it's already a PNG we just read it
-  if (extname(src).toLowerCase() === '.png') return readFileSync(src)
-  // Otherwise convert SVG → 150-px-high PNG
-  return sharp(src).resize({ height: 50 }).png().toBuffer()
+const SRC = 'public/logos'
+const OUT = 'server/templates/converted-logos'
+const HEIGHT = { normal: 70, compact: 40 }            // dots @203 dpi
+
+async function toBuf(path: string, h: number) {
+  const buf = extname(path) === '.png'
+    ? readFileSync(path)
+    : await sharp(path).resize({ height: h }).png().toBuffer()
+  return sharp(buf).resize({ height: h }).png().toBuffer()
 }
 
-async function build () {
-  const files = await glob('public/logos/*.{svg,png}')
-  if (!files.length) {
-    console.log('No SVG or PNG files found in public/logos/. Done.')
-    return
+async function build() {
+  const files = await glob(`${SRC}/*.{svg,png}`)
+  const pick: Record<string,string> = {}
+
+  for (const p of files) {
+    const base = basename(p, extname(p)).toLowerCase()
+    if (pick[base] && extname(pick[base]) === '.svg') continue // prefer SVG
+    pick[base] = p
   }
+  if (!Object.keys(pick).length) return console.log('No logos')
 
-  const outDir = 'server/templates/converted-logos'
-  mkdirSync(outDir, { recursive: true })
+  rmSync(OUT, { recursive:true, force:true })
+  mkdirSync(OUT, { recursive:true })
 
-  for (const inPath of files) {
-    const name = basename(inPath, extname(inPath))          // food, storage …
-    const pngBuf = await rasterise(inPath)
+  const tmp = mkdtempSync(join(tmpdir(), 'logos-'))
 
-    /*  FIX: tell the lib we're giving it an image/png buffer  */
-    const z64 = await encode(pngBuf, {
-      method   : 'Z64',
-      mimeType : 'image/png'
-    })
-
-    const zplBlock =
-      `^FO30,30\n${z64}\n^FS`                               // ready for {{image}}
-    const target = join(outDir, `${name}.txt`)
-    writeFileSync(target, zplBlock)
-    console.log('✓', name, '→', target)
+  for (const [base, src] of Object.entries(pick)) {
+    for (const [mode, h] of Object.entries(HEIGHT)) {
+      const buf = await toBuf(src, h)
+      const zpl   = await encode(buf, { method:'Z64', mimeType:'image/png' })
+      writeFileSync(join(OUT, `${base}_${mode}.txt`), zpl)
+    }
+    console.log('✓', base)
   }
+  rmSync(tmp, { recursive:true, force:true })
 }
-
-build().catch(err => { console.error(err); process.exit(1) })
+build().catch(e => (console.error(e), process.exit(1)))

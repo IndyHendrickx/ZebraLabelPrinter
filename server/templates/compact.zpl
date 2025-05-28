@@ -1,16 +1,21 @@
 ^XA
-^FWN^PW609^LL406^LH0,0
+^FWN
+^PW480^LL320^LH0,0
 ^CF0,30
 
+^FO35,120
 {{image}}
-^FO150,30 ^FB420,2,0,L,0^FD{{item}}^FS
-^FO150,130^FDDate {{date}}^FS
+^FS
+^FO150,15  ^FB300,2,0,L,0^FD{{item}}^FS
+^FO150,105 ^FDDate {{date}}^FS
 
-^GB549,3,3^FS
+^GB420,3,3^FS
 
+^FO35,120
 {{image}}
-^FO150,230 ^FB420,2,0,L,0^FD{{item}}^FS
-^FO150,330^FDDate {{date}}^FS
+^FS
+^FO150,175 ^FB300,2,0,L,0^FD{{item}}^FS
+^FO150,265 ^FD{{date}}^FS
 
 ^PQ{{qty}},0,1,Y
 ^XZ

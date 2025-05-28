@@ -2,6 +2,7 @@ import { readBody, createError } from 'h3'
 import net from 'node:net'
 import { promises as fs } from 'node:fs'
 import { join } from 'node:path'
+import { readdirSync, readFileSync } from 'node:fs'
 
 type Payload = {
   type: 'food' | 'storage' | 'reminder' | 'unknown'
@@ -9,6 +10,11 @@ type Payload = {
   date?: string
   item: string
   qty: number
+}
+
+function isoToEU (iso: string) {
+  const [y,m,d] = iso.split('-')
+  return `${d.padStart(2,'0')}/${m.padStart(2,'0')}/${y}`
 }
 
 export default defineEventHandler(async (event) => {
@@ -28,11 +34,12 @@ export default defineEventHandler(async (event) => {
   // 2  fill template
   const file = join('server/templates', `${body.size}.zpl`)
   let zpl = await fs.readFile(file, 'utf8')
-  const logoTxt = await fs.readFile(
-  `server/templates/converted-logos/${body.type}.txt`, 'utf8')
+
+  const logoFile = join('server/templates/converted-logos',`${body.type}_${body.size}.txt`)
+  const logoTxt = readFileSync(logoFile, 'utf8')
   
   const asciiItem = body.item.replace(/[^ -~]/g, '').toUpperCase()
-  const labelDate = body.date || new Date().toISOString().slice(0, 10)
+  const labelDate = isoToEU(body.date || new Date().toISOString().slice(0, 10))
   zpl = zpl
     .replace('{{date}}', labelDate)
     .replace('{{item}}', asciiItem)

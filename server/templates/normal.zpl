@@ -1,14 +1,19 @@
 ^XA
-^FWN^PW609^LL406^LH0,0
-{{image}}
+^FWN
+^PW480^LL320^LH0,0
 
-^CF0,40
-^FO150,70
-^FB420,3,0,C,0         ; width 420, max 3 lines, centred
+^FO35,115
+{{image}}
+^FS
+
+^CF0,35
+^FO150,40
+^FB285,6,0,L,0
+
 ^FD{{item}}^FS
 
-^CF0,30
-^FO150,260^FDDate {{date}}^FS
+^CF0,20
+^FO380,280^FD{{date}}^FS
 
 ^PQ{{qty}}
 ^XZ
