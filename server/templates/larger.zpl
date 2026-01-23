@@ -1,0 +1,14 @@
+^XA
+^FWN
+^PW480^LL320^LH0,0
+
+^FO35,120
+{{image}}
+^FS
+
+^CF0,35
+^FO150,40
+^FB285,6,0,L,0
+
+^FD{{item}}^FS
+^XZ

@@ -1,3 +1,6 @@
+To create new logo, download SVG and add to public folder! Next run:
+npx tsx ./tools/build-logos.ts
+
 To deploy on ZebraServer
 npm run build && node .output/server/index.mjs
 

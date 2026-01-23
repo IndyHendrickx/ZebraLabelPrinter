@@ -5,8 +5,8 @@ import { join } from 'node:path'
 import { readdirSync, readFileSync } from 'node:fs'
 
 type Payload = {
-  type: 'food' | 'storage' | 'reminder' | 'unknown'
-  size: 'normal' | 'compact'
+  type: 'food' | 'storage' | 'reminder' | 'reindeer' | 'unknown'
+  size: 'normal' | 'compact' | 'larger'
   date?: string
   item: string
   qty: number

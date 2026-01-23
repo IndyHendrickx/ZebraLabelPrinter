@@ -4,7 +4,9 @@ import LabelPreview from '~/components/LabelPreview.vue'
 
 enum Sizes {
   Normal = "normal",
-  Compact = "compact"
+  Compact = "compact",
+  Larger = "larger",
+  OnlyText = "onlytext"
 }
 
 const form = reactive({
@@ -24,13 +26,21 @@ watch(() => form.qty, () => {
   form.qty = form.qty > maxLabels.value ? maxLabels.value : form.qty
 })
 
+watch(() => form.type, () => {
+  if(form.type == "address")
+  {
+    
+  }
+
+}
+
 async function printLabel () {
 
   await $fetch('/api/print', { method: 'POST', body: form })
   alert('Sent to printer!')
 }
 
-const maxChars = { normal: 90, compact: 60 }
+const maxChars = { larger: 120, normal: 90, compact: 60 }
 watch(() => form.size, () => {
   form.qty  = form.size === 'compact' ? 2 : 1
   const max = maxChars[form.size]
@@ -38,7 +48,7 @@ watch(() => form.size, () => {
 })
 const remainingChars = computed(() => maxChars[form.size] - form.item.length)
 
-const maxLabelsSize = { normal: 10, compact: 20 }
+const maxLabelsSize = { large: 10, normal: 10, compact: 20 }
 const maxLabels = computed(() => maxLabelsSize[form.size])
 </script>
 
@@ -51,6 +61,8 @@ const maxLabels = computed(() => maxLabelsSize[form.size])
       <option value="food">Food</option>
       <option value="storage">Storage</option>
       <option value="reminder">Reminder</option>
+      <option value="address">Address (Envelope)</option>
+      <option value="reindeer">Christmas Card</option>
       <option value="unknown">Unknown</option>
     </select>
 
@@ -72,7 +84,7 @@ const maxLabels = computed(() => maxLabelsSize[form.size])
     <div class="flex gap-4">
       <label><input type="radio" value="normal"  v-model="form.size"> Normal</label>
       <label><input type="radio" value="compact" v-model="form.size"> Compact</label>
-      <label><input type="radio" value="Test" v-model="form.size"> Test</label>
+      <label><input type="radio" value="larger" v-model="form.size"> Larger Icon - No Date</label>
     </div>
 
     <!-- qty -->

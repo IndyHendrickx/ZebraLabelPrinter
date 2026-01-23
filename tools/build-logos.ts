@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os'
 
 const SRC = 'public/logos'
 const OUT = 'server/templates/converted-logos'
-const HEIGHT = { normal: 70, compact: 40 }            // dots @203 dpi
+const HEIGHT = { larger: 120, normal: 70, compact: 40 }            // dots @203 dpi
 
 async function toBuf(path: string, h: number) {
   const buf = extname(path) === '.png'
