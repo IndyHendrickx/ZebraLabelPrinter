@@ -1,3 +1,6 @@
+To deploy on ZebraServer
+npm run build && node .output/server/index.mjs
+
 # Nuxt Minimal Starter
 
 Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
