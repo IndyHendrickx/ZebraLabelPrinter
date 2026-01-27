@@ -1,29 +1,25 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 
 const props = defineProps<{ payload: any }>()
-const img   = ref('')
-let timer: NodeJS.Timeout | null = null
+const img = ref('')
 
-renderPreview(props.payload);
-watch(props.payload, data => {
-  if (timer) clearTimeout(timer)
-  timer = setTimeout(async () => {
-    renderPreview(data);
-  }, 1000)
-}, { deep: true })
-
-async function renderPreview(data){
-    const { zpl } = await $fetch('/api/print', {
-      method : 'POST',
-      params : { preview: 1 },
-      body   : data
-    })
-    img.value = await $fetch('/api/preview', {
-      method : 'POST',
-      body   : { zpl }
-    })
+async function render() {
+  try {
+    const res = await $fetch<string>('/api/preview', { method: 'POST', body: props.payload })
+    img.value = res
+  } catch (err: any) {
+    if (err.data?.code === 'BAD_REQUEST') {
+      console.log(err.data)
+    } else {
+      console.log(err)
+    }
+  }
 }
+
+defineExpose({
+  render
+})
 </script>
 
 <template>

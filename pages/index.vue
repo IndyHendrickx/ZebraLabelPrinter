@@ -1,109 +1,110 @@
 <script setup lang="ts">
-import { reactive, watch, computed } from 'vue'
 import LabelPreview from '~/components/LabelPreview.vue'
+import FormField from '~/components/FormField.vue'
+import { labelTypeConfig, type LabelTypeKey } from '~/types/label'
+import { useLabelForm } from '~/composables/useLabelForm'
+import { useLabelValidation } from '~/composables/useLabelValidation'
+import { computed, watch } from 'vue'
+import type { LabelImageOption } from '~/types/label-images'
+import { ref } from 'vue'
 
-enum Sizes {
-  Normal = "normal",
-  Compact = "compact",
-  Larger = "larger",
-  OnlyText = "onlytext"
-}
+const previewRef = ref<{
+  render: () => Promise<void>
+} | null>(null)
+const { form, getFieldValue, maxQuantity, printLabel } = useLabelForm()
+const { validation } = useLabelValidation(form)
 
-const form = reactive({
-  type: 'food' as const,
-  size: "normal" as Sizes,
-  date: new Date().toISOString().slice(0, 10),
-  item: '',
-  qty : 1
-})
-
-
-watch(() => form.size, () => {
-  form.qty = form.size === 'compact' ? 2 : 1
-})
-
-watch(() => form.qty, () => {
-  form.qty = form.qty > maxLabels.value ? maxLabels.value : form.qty
-})
-
-watch(() => form.type, () => {
-  if(form.type == "address")
-  {
-    
+watch(() => form.type, type => {
+  setDefaultImage(type)
+  const cfg = labelTypeConfig[type]
+  if (!cfg.allowSizeChange && cfg.fixedSize) {
+    form.size = cfg.fixedSize
   }
-
-}
-
-async function printLabel () {
-
-  await $fetch('/api/print', { method: 'POST', body: form })
-  alert('Sent to printer!')
-}
-
-const maxChars = { larger: 120, normal: 90, compact: 60 }
-watch(() => form.size, () => {
-  form.qty  = form.size === 'compact' ? 2 : 1
-  const max = maxChars[form.size]
-  if (form.item.length > max) form.item = form.item.slice(0, max)
 })
-const remainingChars = computed(() => maxChars[form.size] - form.item.length)
 
-const maxLabelsSize = { large: 10, normal: 10, compact: 20 }
-const maxLabels = computed(() => maxLabelsSize[form.size])
+watch(() => form.image.key, (key) => {
+  const img = labelTypeConfig[form.type].images?.find(i => i.key === key)
+  if (img) {
+    form.image.size = img.defaultSize ?? img.availableSizes?.[0] ?? 'm'
+  }
+})
+
+const selectedImage = computed<LabelImageOption | undefined>(() => {
+  return labelTypeConfig[form.type].images
+    ?.find(i => i.key === form.image.key)
+})
+
+
+function setDefaultImage(type: LabelTypeKey) {
+  const cfg = labelTypeConfig[type]
+  const defaultImg = cfg.images?.find(i => i.isDefault) ?? cfg.images?.[0]
+  if (defaultImg) {
+    form.image.key = defaultImg.key
+    form.image.size = defaultImg.defaultSize ?? defaultImg.availableSizes?.[0] ?? 'm'
+  }
+}
+setDefaultImage(form.type)
 </script>
 
 <template>
-  <div class="max-w-md mx-auto p-4 space-y-4">
+  <div class="max-w-lg mx-auto p-4 space-y-4">
 
-    <!-- type -->
-    <label class="block text-gray-700 text-lg font-bold mb-2" for="form.type">Type</label>
-    <select v-model="form.type" class="w-full border p-2 rounded">
-      <option value="food">Food</option>
-      <option value="storage">Storage</option>
-      <option value="reminder">Reminder</option>
-      <option value="address">Address (Envelope)</option>
-      <option value="reindeer">Christmas Card</option>
-      <option value="unknown">Unknown</option>
+    <label for="Type" class="block text-gray-700 text-lg font-bold mb-2">Type</label>
+    <select id="Type" v-model="form.type" class="w-full border p-2 rounded">
+      <option v-for="(cfg, key) in labelTypeConfig" :key="key" :value="key">{{ key[0] !== undefined ?
+        key[0].toUpperCase() + key.slice(1) : '' }}</option>
     </select>
 
-    <!-- date -->
-    <label class="block text-gray-700 text-lg font-bold mb-2" for="form.date">Date</label>
-    <input v-model="form.date" type="date" class="w-full border p-2 rounded" />
-    
-    <!-- description -->
-    <label class="block text-gray-700 text-lg font-bold mb-2" for="form.item">Description</label>
-    <div>
-      <input v-model="form.item"
-             class="w-full border p-2 rounded font-bold uppercase"
-             placeholder="Description" required />
-      <p class="text-xs text-right">{{ remainingChars }} chars left</p>
-    </div>
-
-    <!-- size radio -->
-     <label class="block text-gray-700 text-lg font-bold mb-2" for="form.size">Label</label>
     <div class="flex gap-4">
-      <label><input type="radio" value="normal"  v-model="form.size"> Normal</label>
-      <label><input type="radio" value="compact" v-model="form.size"> Compact</label>
-      <label><input type="radio" value="larger" v-model="form.size"> Larger Icon - No Date</label>
+      <div class="w-full" v-if="labelTypeConfig[form.type].images?.length">
+        <label for="Image" class="block text-gray-700 text-lg font-bold mb-2">Image</label>
+        <select id="Image" v-model="form.image.key" class="w-full border p-2 rounded">
+          <option v-for="img in labelTypeConfig[form.type].images" :key="img.key" :value="img.key">
+            {{ img.label }} {{ img.isDefault ? '(default)' : '' }}
+          </option>
+        </select>
+      </div>
+      <div v-if="selectedImage?.availableSizes?.length">
+        <label class="block text-gray-700 text-lg font-bold mb-2">Image Size</label>
+        <div class="flex gap-4">
+          <label :for="'ImageSize' + size.toUpperCase()" v-for="size in selectedImage.availableSizes" :key="size">
+            <input :id="'ImageSize' + size.toUpperCase()" type="radio" :value="size" v-model="form.image.size" />
+            {{ size.toUpperCase() }}
+          </label>
+        </div>
+      </div>
     </div>
 
-    <!-- qty -->
-     <div>
-      <input v-model.number="form.qty"
-           :min="form.size==='compact'?2:1"
-           :step="form.size==='compact'?2:1"
-           type="number"
-           :max="maxLabels"
-           class="w-full border p-2 rounded" />
-      <p class="text-xs text-right">Max {{ maxLabels }} labels {{ form.size==='compact'?" (2 labels / sticker)":" (1 label / sticker)" }}</p>
+    <FormField v-for="field in labelTypeConfig[form.type].fields" :key="field.key" :label="field.label"
+      :type="field.type" :maxChars="field.maxChars" :model-value="getFieldValue(field.key).value"
+      @update:model-value="val => getFieldValue(field.key).value = val" />
+
+    <div class="flex">
+      <div class="content-center mr-12" v-if="labelTypeConfig[form.type].allowSizeChange">
+        <label for="Label" class="block text-gray-700 text-lg font-bold mb-2">Label</label>
+        <div id="Label" class="flex gap-4 min-h-14.5 text-center">
+          <label><input type="radio" value="normal" v-model="form.size"> Normal</label>
+          <label><input type="radio" value="compact" v-model="form.size"> Compact</label>
+        </div>
+      </div>
+      <div class="w-full">
+        <label for="Quantity" class="block text-gray-700 text-lg font-bold mb-2">Quantity</label>
+        <input id="Quantity" type="number" v-model.number="form.qty" min="1" :max="maxQuantity"
+          class="w-full border p-2 rounded" />
+        <p class="text-xs text-right">Max {{ maxQuantity }} labels</p>
+      </div>
     </div>
 
-    <!-- live preview -->
-    <LabelPreview :payload="form" />
-    
-    <!-- print button -->
-    <button @click="printLabel"
-            class="bg-blue-600 text-white py-2 rounded w-full cursor-pointer flex items-center justify-center gap-2">Print
-    </button>
+    <div class="hidden">
+      <input id="Template" type="text" v-model.template="form.template" class="w-full border p-2 rounded" />
+    </div>
+
+    <div class="flex">
+      <button @click="previewRef?.render()"
+        class="bg-blue-600 text-white py-2 rounded w-full m-0.5 cursor-pointer">Preview</button>
+      <button @click="printLabel" class="bg-red-600 text-white py-2 rounded w-full m-0.5 cursor-pointer">Print</button>
+    </div>
+    <LabelPreview ref="previewRef" :payload="form" />
+
   </div>
 </template>

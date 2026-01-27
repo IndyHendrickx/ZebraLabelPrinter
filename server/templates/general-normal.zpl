@@ -2,7 +2,7 @@
 ^FWN
 ^PW480^LL320^LH0,0
 
-^FO35,120
+^FO35,115
 {{image}}
 ^FS
 
@@ -10,5 +10,10 @@
 ^FO150,40
 ^FB285,6,0,L,0
 
-^FD{{item}}^FS
+^FD{{description}}^FS
+
+^CF0,20
+^FO380,280^FD{{date}}^FS
+
+^PQ{{qty}}
 ^XZ
