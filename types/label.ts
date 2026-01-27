@@ -123,7 +123,7 @@ export const labelTypeConfig: Record<LabelTypeKey, LabelConfig> = {
   }
 }
 
-export const baseFields = { template: z.nativeEnum(Templates), qty: z.number().int().min(1).max(20), size: z.nativeEnum(Sizes), image: z.object({ key: z.string(), size: z.enum(['s', 'm', 'l', 'xl'] as const) }) }
+export const baseFields = { date: z.string().max(12), template: z.nativeEnum(Templates), qty: z.number().int().min(1).max(20), size: z.nativeEnum(Sizes), image: z.object({ key: z.string(), size: z.enum(['s', 'm', 'l', 'xl'] as const) }) }
 export const labelSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('food'), ...baseFields, date: z.string(), description: z.string().max(90) }),
   z.object({ type: z.literal('storage'), ...baseFields, date: z.string(), description: z.string().max(90) }),

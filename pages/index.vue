@@ -1,18 +1,60 @@
 <script setup lang="ts">
+import { ref, computed, watch } from 'vue'
 import LabelPreview from '~/components/LabelPreview.vue'
 import FormField from '~/components/FormField.vue'
 import { labelTypeConfig, type LabelTypeKey } from '~/types/label'
 import { useLabelForm } from '~/composables/useLabelForm'
 import { useLabelValidation } from '~/composables/useLabelValidation'
-import { computed, watch } from 'vue'
 import type { LabelImageOption } from '~/types/label-images'
-import { ref } from 'vue'
 
-const previewRef = ref<{
-  render: () => Promise<void>
-} | null>(null)
+const previewRef = ref<{ render: () => Promise<void> } | null>(null)
+
 const { form, getFieldValue, maxQuantity, printLabel } = useLabelForm()
-const { validation } = useLabelValidation(form)
+useLabelValidation(form)
+
+const countdown = ref<number | null>(null)
+let timerId: ReturnType<typeof setInterval> | null = null
+const hasChangedOnce = ref(false)
+
+function cancelPreviewCountdown() {
+  if (timerId) {
+    clearInterval(timerId)
+    timerId = null
+  }
+  countdown.value = null
+}
+
+function startPreviewCountdown() {
+  cancelPreviewCountdown()
+  countdown.value = 1
+
+  timerId = setInterval(async () => {
+    if (countdown.value === null) return
+
+    countdown.value--
+
+    if (countdown.value <= 0) {
+      cancelPreviewCountdown()
+      await previewRef.value?.render()
+    }
+  }, 1000)
+}
+
+function manualPreview() {
+  cancelPreviewCountdown()
+  previewRef.value?.render()
+}
+
+watch(
+  form,
+  () => {
+    if (!hasChangedOnce.value) {
+      hasChangedOnce.value = true
+    }
+    startPreviewCountdown()
+  },
+  { deep: true }
+)
 
 watch(() => form.type, type => {
   setDefaultImage(type)
@@ -22,7 +64,7 @@ watch(() => form.type, type => {
   }
 })
 
-watch(() => form.image.key, (key) => {
+watch(() => form.image.key, key => {
   const img = labelTypeConfig[form.type].images?.find(i => i.key === key)
   if (img) {
     form.image.size = img.defaultSize ?? img.availableSizes?.[0] ?? 'm'
@@ -34,7 +76,6 @@ const selectedImage = computed<LabelImageOption | undefined>(() => {
     ?.find(i => i.key === form.image.key)
 })
 
-
 function setDefaultImage(type: LabelTypeKey) {
   const cfg = labelTypeConfig[type]
   const defaultImg = cfg.images?.find(i => i.isDefault) ?? cfg.images?.[0]
@@ -43,32 +84,35 @@ function setDefaultImage(type: LabelTypeKey) {
     form.image.size = defaultImg.defaultSize ?? defaultImg.availableSizes?.[0] ?? 'm'
   }
 }
+
 setDefaultImage(form.type)
 </script>
 
 <template>
   <div class="max-w-lg mx-auto p-4 space-y-4">
 
-    <label for="Type" class="block text-gray-700 text-lg font-bold mb-2">Type</label>
-    <select id="Type" v-model="form.type" class="w-full border p-2 rounded">
-      <option v-for="(cfg, key) in labelTypeConfig" :key="key" :value="key">{{ key[0] !== undefined ?
-        key[0].toUpperCase() + key.slice(1) : '' }}</option>
+    <label class="block text-gray-700 text-lg font-bold mb-2">Type</label>
+    <select v-model="form.type" class="w-full border p-2 rounded">
+      <option v-for="(cfg, key) in labelTypeConfig" :key="key" :value="key">
+        {{ key[0]?.toUpperCase() + key.slice(1) }}
+      </option>
     </select>
 
     <div class="flex gap-4">
       <div class="w-full" v-if="labelTypeConfig[form.type].images?.length">
-        <label for="Image" class="block text-gray-700 text-lg font-bold mb-2">Image</label>
-        <select id="Image" v-model="form.image.key" class="w-full border p-2 rounded">
+        <label class="block text-gray-700 text-lg font-bold mb-2">Image</label>
+        <select v-model="form.image.key" class="w-full border p-2 rounded">
           <option v-for="img in labelTypeConfig[form.type].images" :key="img.key" :value="img.key">
             {{ img.label }} {{ img.isDefault ? '(default)' : '' }}
           </option>
         </select>
       </div>
+
       <div v-if="selectedImage?.availableSizes?.length">
         <label class="block text-gray-700 text-lg font-bold mb-2">Image Size</label>
         <div class="flex gap-4">
-          <label :for="'ImageSize' + size.toUpperCase()" v-for="size in selectedImage.availableSizes" :key="size">
-            <input :id="'ImageSize' + size.toUpperCase()" type="radio" :value="size" v-model="form.image.size" />
+          <label v-for="size in selectedImage.availableSizes" :key="size">
+            <input type="radio" :value="size" v-model="form.image.size" />
             {{ size.toUpperCase() }}
           </label>
         </div>
@@ -80,31 +124,27 @@ setDefaultImage(form.type)
       @update:model-value="val => getFieldValue(field.key).value = val" />
 
     <div class="flex">
-      <div class="content-center mr-12" v-if="labelTypeConfig[form.type].allowSizeChange">
-        <label for="Label" class="block text-gray-700 text-lg font-bold mb-2">Label</label>
-        <div id="Label" class="flex gap-4 min-h-14.5 text-center">
+      <div v-if="labelTypeConfig[form.type].allowSizeChange" class="mr-12">
+        <label class="block text-gray-700 text-lg font-bold mb-2">Label</label>
+        <div class="flex gap-4">
           <label><input type="radio" value="normal" v-model="form.size"> Normal</label>
           <label><input type="radio" value="compact" v-model="form.size"> Compact</label>
         </div>
       </div>
+
       <div class="w-full">
-        <label for="Quantity" class="block text-gray-700 text-lg font-bold mb-2">Quantity</label>
-        <input id="Quantity" type="number" v-model.number="form.qty" min="1" :max="maxQuantity"
-          class="w-full border p-2 rounded" />
+        <label class="block text-gray-700 text-lg font-bold mb-2">Quantity</label>
+        <input type="number" v-model.number="form.qty" min="1" :max="maxQuantity" class="w-full border p-2 rounded" />
         <p class="text-xs text-right">Max {{ maxQuantity }} labels</p>
       </div>
     </div>
 
-    <div class="hidden">
-      <input id="Template" type="text" v-model.template="form.template" class="w-full border p-2 rounded" />
-    </div>
-
-    <div class="flex">
-      <button @click="previewRef?.render()"
-        class="bg-blue-600 text-white py-2 rounded w-full m-0.5 cursor-pointer">Preview</button>
-      <button @click="printLabel" class="bg-red-600 text-white py-2 rounded w-full m-0.5 cursor-pointer">Print</button>
-    </div>
     <LabelPreview ref="previewRef" :payload="form" />
 
+    <div class="flex">
+      <button @click="printLabel" class="bg-red-600 text-white py-2 rounded w-full m-0.5 cursor-pointer">
+        Print
+      </button>
+    </div>
   </div>
 </template>

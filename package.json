@@ -15,7 +15,8 @@
     "nuxt": "^3.17.4",
     "vue": "^3.5.14",
     "vue-router": "^4.5.1",
-    "zpl-image": "^0.2.0"
+    "zpl-image": "^0.2.0",
+    "zpl-renderer-js": "^2.0.2"
   },
   "devDependencies": {
     "@nuxt/types": "^2.18.1",

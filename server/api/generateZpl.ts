@@ -21,6 +21,14 @@ function flattenKeys(obj: any, prefix = ''): Record<string, string> {
 }
 
 /**
+ * Convert iso date to DD/MM/YYYY
+ */
+function isoToDDMMYYYY(iso: string) {
+    const [y, m, d] = iso.split('-')
+    return `${d?.padStart(2, '0')}/${m?.padStart(2, '0')}/${y}`
+}
+
+/**
  * Generate ZPL string from a label form
  */
 export function generateZpl(form: LabelForm): string {
@@ -32,6 +40,7 @@ export function generateZpl(form: LabelForm): string {
     }
 
     const data = parsed.data
+    data.date = isoToDDMMYYYY(data.date)
     const templateFile = join('server/templates', `${data.template}-${data.size}.zpl`)
     let zpl: string
     try {
