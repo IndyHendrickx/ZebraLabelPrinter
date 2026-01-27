@@ -32,10 +32,10 @@ watch(() => props.modelValue, (val) => {
     </label>
 
     <textarea v-if="type === 'textarea'" v-model="internalValue" :placeholder="label" :id="label"
-      class="w-full border p-2 rounded uppercase"></textarea>
+      class="w-full border p-2 rounded uppercase min-h-12 h-16"></textarea>
 
     <input v-else :type="type ?? 'text'" v-model="internalValue" :placeholder="label" :id="label"
-      class="w-full border p-2 rounded uppercase" />
+      class="w-full border p-2 rounded uppercase h-12" />
 
     <p v-if="maxChars && typeof internalValue === 'string'" class="text-xs text-right">
       {{ maxChars - internalValue.length }} chars left

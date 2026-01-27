@@ -91,8 +91,8 @@ setDefaultImage(form.type)
 <template>
   <div class="max-w-lg mx-auto p-4 space-y-4">
 
-    <label class="block text-gray-700 text-lg font-bold mb-2">Type</label>
-    <select v-model="form.type" class="w-full border p-2 rounded">
+    <label for="Type" class="block text-gray-700 text-lg font-bold mb-2">Type</label>
+    <select id="Type" v-model="form.type" class="w-full border p-2 rounded h-12">
       <option v-for="(cfg, key) in labelTypeConfig" :key="key" :value="key">
         {{ key[0]?.toUpperCase() + key.slice(1) }}
       </option>
@@ -100,8 +100,8 @@ setDefaultImage(form.type)
 
     <div class="flex gap-4">
       <div class="w-full" v-if="labelTypeConfig[form.type].images?.length">
-        <label class="block text-gray-700 text-lg font-bold mb-2">Image</label>
-        <select v-model="form.image.key" class="w-full border p-2 rounded">
+        <label for="Image" class="block text-gray-700 text-lg font-bold mb-2">Image</label>
+        <select id="Image" v-model="form.image.key" class="w-full border p-2 rounded h-12">
           <option v-for="img in labelTypeConfig[form.type].images" :key="img.key" :value="img.key">
             {{ img.label }} {{ img.isDefault ? '(default)' : '' }}
           </option>
@@ -110,9 +110,9 @@ setDefaultImage(form.type)
 
       <div v-if="selectedImage?.availableSizes?.length">
         <label class="block text-gray-700 text-lg font-bold mb-2">Image Size</label>
-        <div class="flex gap-4">
-          <label v-for="size in selectedImage.availableSizes" :key="size">
-            <input type="radio" :value="size" v-model="form.image.size" />
+        <div class="flex gap-4 h-12">
+          <label :for="'ImageSize' + size.toUpperCase()" v-for="size in selectedImage.availableSizes" :key="size">
+            <input :id="'ImageSize' + size.toUpperCase()" type="radio" :value="size" v-model="form.image.size" />
             {{ size.toUpperCase() }}
           </label>
         </div>
@@ -124,17 +124,20 @@ setDefaultImage(form.type)
       @update:model-value="val => getFieldValue(field.key).value = val" />
 
     <div class="flex">
-      <div v-if="labelTypeConfig[form.type].allowSizeChange" class="mr-12">
+      <div v-if="labelTypeConfig[form.type].allowSizeChange" class="mr-12 h-12">
         <label class="block text-gray-700 text-lg font-bold mb-2">Label</label>
         <div class="flex gap-4">
-          <label><input type="radio" value="normal" v-model="form.size"> Normal</label>
-          <label><input type="radio" value="compact" v-model="form.size"> Compact</label>
+          <label for="LabelNormal"><input id="LabelNormal" type="radio" value="normal" v-model="form.size">
+            Normal</label>
+          <label for="LabelCompact"><input id="LabelCompact" type="radio" value="compact" v-model="form.size">
+            Compact</label>
         </div>
       </div>
 
       <div class="w-full">
-        <label class="block text-gray-700 text-lg font-bold mb-2">Quantity</label>
-        <input type="number" v-model.number="form.qty" min="1" :max="maxQuantity" class="w-full border p-2 rounded" />
+        <label for="Quantity" class="block text-gray-700 text-lg font-bold mb-2">Quantity</label>
+        <input id="Quantity" type="number" v-model.number="form.qty" min="1" :max="maxQuantity"
+          class="w-full border p-2 rounded h-12" />
         <p class="text-xs text-right">Max {{ maxQuantity }} labels</p>
       </div>
     </div>
