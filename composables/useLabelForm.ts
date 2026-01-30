@@ -1,3 +1,4 @@
+// composables/useLabelForm.ts
 import { reactive, computed, watch } from 'vue'
 import { Sizes, type LabelTypeKey, labelTypeConfig, Templates } from '~/types/label'
 import type { ImageSize } from '~/types/label-images'
@@ -14,17 +15,11 @@ function createDefaultForm(type: LabelTypeKey): LabelForm {
     size: Sizes.Normal,
     qty: 1,
     description: '',
-    date: new Date().toISOString().slice(0, 10),
+    date: new Date(),
     address: { name: '', lines: '', zip: '', city: '', country: '' },
-    image: {
-      key: 'none',
-      size: 'm' as ImageSize
-    },
+    image: { key: 'none', size: 'm' as ImageSize },
     template: Templates.General
   }
-
-  // If you have specific per-type differences, extend here.
-  // The cast assures TS that this object conforms to LabelForm union.
   return base as unknown as LabelForm
 }
 
@@ -40,8 +35,7 @@ export function useLabelForm() {
   function getFieldValue(path: string) {
     const keys = path.split('.').filter(Boolean) as string[]
 
-    // Always return a computed of type string | number (no undefined)
-    return computed<string | number>({
+    return computed<string | number | Date>({
       get() {
         const val = keys.reduce<unknown>((acc, key) => {
           if (acc && typeof acc === 'object' && key in (acc as Record<string, unknown>)) {
@@ -52,9 +46,10 @@ export function useLabelForm() {
 
         if (val === undefined || val === null) return ''
         if (typeof val === 'number') return val
+        if (val instanceof Date) return val
         return String(val)
       },
-      set(val: string | number) {
+      set(val: string | number | Date) {
         if (keys.length === 0) return
         const last = keys[keys.length - 1] as string
         let parent = form as unknown as Record<string, unknown>
@@ -79,10 +74,12 @@ export function useLabelForm() {
 
   const maxQuantity = computed(() => labelTypeConfig[form.type].maxQty ?? 10)
 
+  /**
+   * Send form to server for printing. This function no longer shows UI feedback.
+   * Caller should handle success/failure and show toasts.
+   */
   async function printLabel() {
-    await $fetch('/api/print', { method: 'POST', body: form })
-    // TODO: use toast instead of alert
-    alert('Sent to printer!')
+    return await $fetch('/api/print', { method: 'POST', body: form })
   }
 
   return { form, getFieldValue, maxQuantity, printLabel }

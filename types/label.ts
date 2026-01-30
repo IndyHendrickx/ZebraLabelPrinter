@@ -123,20 +123,52 @@ export const labelTypeConfig: Record<LabelTypeKey, LabelConfig> = {
   }
 }
 
-export const baseFields = { date: z.string().max(12), template: z.nativeEnum(Templates), qty: z.number().int().min(1).max(20), size: z.nativeEnum(Sizes), image: z.object({ key: z.string(), size: z.enum(['s', 'm', 'l', 'xl'] as const) }) }
+export const baseFields = {
+  date: z.coerce.date().min(new Date('2026-01-01')).max(new Date('2100-12-31')),
+  template: z.nativeEnum(Templates),
+  qty: z.number().int().min(1).max(20),
+  size: z.nativeEnum(Sizes),
+  image: z.object({ key: z.string(), size: z.enum(['s', 'm', 'l', 'xl'] as const) })
+}
 export const labelSchema = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('food'), ...baseFields, date: z.string(), description: z.string().max(90) }),
-  z.object({ type: z.literal('storage'), ...baseFields, date: z.string(), description: z.string().max(90) }),
-  z.object({ type: z.literal('reminder'), ...baseFields, date: z.string(), description: z.string().max(90) }),
-  z.object({ type: z.literal('unknown'), ...baseFields, date: z.string(), description: z.string().max(90) }),
-  z.object({ type: z.literal('christmascard'), ...baseFields, template: z.literal(Templates.Christmas), size: z.literal(Sizes.Normal), description: z.string().max(120) }),
   z.object({
-    type: z.literal('address'), ...baseFields, template: z.literal(Templates.Address), size: z.literal(Sizes.Normal), address: z.object({
-      name: z.string().max(40),
-      lines: z.string().max(120),
-      zip: z.string().max(12),
-      city: z.string().max(40),
-      country: z.string().max(40)
+    type: z.literal('food'),
+    ...baseFields,
+    description: z.string().trim().min(1).max(90)
+  }),
+  z.object({
+    type: z.literal('storage'),
+    ...baseFields,
+    description: z.string().trim().min(1).max(90)
+  }),
+  z.object({
+    type: z.literal('reminder'),
+    ...baseFields,
+    description: z.string().trim().min(1).max(90)
+  }),
+  z.object({
+    type: z.literal('unknown'),
+    ...baseFields,
+    description: z.string().trim().min(1).max(90)
+  }),
+  z.object({
+    type: z.literal('christmascard'),
+    ...baseFields,
+    template: z.literal(Templates.Christmas),
+    size: z.literal(Sizes.Normal),
+    description: z.string().trim().min(1).max(120)
+  }),
+  z.object({
+    type: z.literal('address'),
+    ...baseFields,
+    template: z.literal(Templates.Address),
+    size: z.literal(Sizes.Normal),
+    address: z.object({
+      name: z.string().trim().min(1).max(40),
+      lines: z.string().trim().min(1).max(120),
+      zip: z.string().trim().min(1).max(12),
+      city: z.string().trim().min(1).max(40),
+      country: z.string().trim().min(1).max(40)
     })
   })
 ])

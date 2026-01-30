@@ -8,6 +8,8 @@ const props = defineProps<{
     images?: readonly LabelImageOption[]
     imageKey: string
     imageSize: ImageSize
+    showValidation: boolean
+    getErrors: (key: string) => readonly string[]
 }>()
 
 const emit = defineEmits<{
@@ -102,14 +104,15 @@ function sizeOptionsFor(key: string | undefined, imgs?: readonly LabelImageOptio
         <div class="flex items-start gap-4">
             <!-- Image select: use FormField (select) -->
             <div class="w-2/3">
-                <FormField :model-value="props.imageKey" label="Image" type="select"
-                    :options="imageOptions(props.images)"
+                <FormField :errors="showValidation ? getErrors('imageKey') : undefined" :required="true"
+                    :model-value="props.imageKey" label="Image" type="select" :options="imageOptions(props.images)"
                     @update:model-value="v => emit('update:imageKey', String(v))" />
             </div>
 
             <!-- Size select: use FormField (select) -->
             <div class="w-1/3">
-                <FormField :model-value="props.imageSize" label="Size" type="select"
+                <FormField :errors="showValidation ? getErrors('imageSize') : undefined" :required="true"
+                    :model-value="props.imageSize" label="Size" type="select"
                     :options="sizeOptionsFor(props.imageKey, props.images)"
                     @update:model-value="v => emit('update:imageSize', String(v) as ImageSize)" />
             </div>

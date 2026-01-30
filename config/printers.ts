@@ -9,8 +9,7 @@ export type Printer = {
  * Add your printers here. This file is imported from both client and server code.
  */
 export const printers: Printer[] = [
-  { key: 'office', name: 'Office Zebra', host: '192.168.1.100', port: 9100 },
-  { key: 'kitchen', name: 'Kitchen Zebra', host: '192.168.1.101', port: 9100 }
+  { key: 'office', name: 'Office Zebra', host: '10.111.111.91', port: 9100 }
 ]
 
 export function getPrinter(key: string) {

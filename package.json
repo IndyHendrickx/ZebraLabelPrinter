@@ -15,6 +15,7 @@
     "nuxt": "^4.3.0",
     "vue": "^3.5.27",
     "vue-router": "^4.6.4",
+    "vue-toastification": "2.0.0-rc.5",
     "zpl-image": "^0.2.0",
     "zpl-renderer-js": "^2.0.2"
   },

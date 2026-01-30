@@ -9,7 +9,8 @@ export default defineEventHandler(async (event) => {
   const form = body as unknown as LabelForm
   const useExternalAPI = Boolean(body['useExternalAPI'])
 
-  const zpl = generateZpl(form)
+  // IMPORTANT: preview should not throw on partial/invalid data -> skip strict validation
+  const zpl = generateZpl(form, { skipValidation: true })
 
   if (useExternalAPI) {
     return await labelaryAPI(zpl)

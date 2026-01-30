@@ -1,16 +1,21 @@
-import { computed } from 'vue'
+import { computed, type ComputedRef } from 'vue'
 import { labelSchema, type LabelForm } from '~/types/label'
 
 /**
- * Provide reactive validation for a LabelForm.
- * - Uses Zod schema safeParse to avoid throwing.
- * - Returns { valid, errors } where errors is a flattened fieldErrors map.
+ * Reactive validation helpers for a LabelForm.
+ * Returns:
+ * - validation: computed object `{ valid, errors }`
+ * - isValid(): boolean helper
+ * - getErrors(key?): errors for a field or undefined
  */
-export function useLabelValidation(form: LabelForm & { printer?: string }) {
-  const validation = computed<{
-    valid: boolean
-    errors: Record<string, string[] | undefined>
-  }>(() => {
+export function useLabelValidation(
+  form: LabelForm & { printer?: string }
+): {
+  validation: ComputedRef<{ valid: boolean; errors: Record<string, string[] | undefined> }>
+  isValid: () => boolean
+  getErrors: (key?: string) => string[] | undefined
+} {
+  const validation = computed(() => {
     const result = labelSchema.safeParse(form)
     return {
       valid: result.success,
@@ -18,5 +23,14 @@ export function useLabelValidation(form: LabelForm & { printer?: string }) {
     }
   })
 
-  return { validation }
+  function isValid() {
+    return validation.value.valid
+  }
+
+  function getErrors(key?: string) {
+    if (!key) return undefined
+    return validation.value.errors[key]
+  }
+
+  return { validation, isValid, getErrors }
 }

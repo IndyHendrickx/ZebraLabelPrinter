@@ -2,27 +2,39 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { labelSchema, type LabelForm } from '~/types/label'
 
-/**
- * Type guard for plain objects (excludes arrays and null).
- */
 function isPlainObject(value: unknown): value is Record<string, unknown> {
-    return typeof value === 'object' && value !== null && !Array.isArray(value)
+    return (
+        typeof value === 'object' &&
+        value !== null &&
+        !Array.isArray(value) &&
+        !(value instanceof Date)
+    )
 }
 
-/**
- * Flatten nested object keys into dot-notation mapping.
- * Example: { address: { name: "John" } } -> { "address.name": "John" }
- *
- * - Accepts any unknown input and safely guards for plain objects.
- * - Converts non-object values to string.
- */
+function isoToDDMMYYYY(isoOrDate: string | Date | undefined): string {
+    if (!isoOrDate) return ''
+    let date: Date
+    if (isoOrDate instanceof Date) date = isoOrDate
+    else date = new Date(String(isoOrDate))
+    if (Number.isNaN(date.getTime())) return ''
+    const d = String(date.getDate()).padStart(2, '0')
+    const m = String(date.getMonth() + 1).padStart(2, '0')
+    const y = String(date.getFullYear())
+    return `${d}/${m}/${y}`
+}
+
+function stringifyValue(v: unknown): string {
+    if (v instanceof Date) return isoToDDMMYYYY(v)
+    if (Array.isArray(v)) return v.map(i => stringifyValue(i)).join(', ')
+    if (v === null || v === undefined) return ''
+    return String(v)
+}
+
 function flattenKeys(obj: unknown, prefix = ''): Record<string, string> {
     const res: Record<string, string> = {}
-
     if (!isPlainObject(obj)) {
-        // Non-object root becomes a single key (useful for primitives/arrays)
         const key = prefix || 'value'
-        res[key] = String(obj ?? '')
+        res[key] = stringifyValue(obj)
         return res
     }
 
@@ -30,45 +42,50 @@ function flattenKeys(obj: unknown, prefix = ''): Record<string, string> {
         const newKey = prefix ? `${prefix}.${key}` : key
         if (isPlainObject(val)) {
             Object.assign(res, flattenKeys(val, newKey))
-        } else if (Array.isArray(val)) {
-            // Preserve array as a comma-separated string (explicit and safe)
-            res[newKey] = val.map((v) => String(v ?? '')).join(', ')
         } else {
-            res[newKey] = String(val ?? '')
+            res[newKey] = stringifyValue(val)
         }
     }
-
     return res
 }
 
 /**
- * Convert ISO date string (YYYY-MM-DD) to DD/MM/YYYY.
- * Assumes a simple ISO date; returns empty string for falsy input.
+ * Generate ZPL from a form.
+ * opts.skipValidation = true: do not throw on invalid input — used for preview.
  */
-function isoToDDMMYYYY(iso: string | undefined): string {
-    if (!iso) return ''
-    const [y, m, d] = iso.split('-')
-    return `${d?.padStart(2, '0')}/${m?.padStart(2, '0')}/${y}`
-}
-
-/**
- * Generate ZPL string from a validated LabelForm.
- * - Validates input against labelSchema.
- * - Loads template and optional image ZPL blobs.
- * - Replaces placeholders using flattened data keys.
- */
-export function generateZpl(form: LabelForm): string {
-    const parsed = labelSchema.safeParse(form)
-    if (!parsed.success) {
-        // Log original input to help debugging, then throw structured errors.
-        console.log(form)
-        const errors = parsed.error.flatten().fieldErrors
-        throw new Error(JSON.stringify(errors))
+export function generateZpl(form: unknown, opts?: { skipValidation?: boolean }): string {
+    if (!opts?.skipValidation) {
+        const parsed = labelSchema.safeParse(form)
+        if (!parsed.success) {
+            console.log(form)
+            const errors = parsed.error.flatten().fieldErrors
+            throw new Error(JSON.stringify(errors))
+        }
+        // keep parsed.data as-is (date is a Date)
+        const data: LabelForm = parsed.data
+        return buildZplFromData(data)
     }
 
-    // Work on a shallow copy to avoid mutating Zod output unexpectedly.
-    const data: LabelForm = { ...parsed.data, date: isoToDDMMYYYY(parsed.data.date) }
+    // skip validation path — coerce form to a safe shape with sensible defaults
+    const raw = (isPlainObject(form) ? (form as Record<string, unknown>) : {})
+    const data = {
+        type: String(raw.type ?? 'food'),
+        template: String(raw.template ?? 'general'),
+        size: String(raw.size ?? 'normal'),
+        date: raw.date ? new Date(String(raw.date)) : new Date(),
+        qty: Number(raw.qty ?? 1),
+        image: {
+            key: String((raw.image && typeof raw.image === 'object' && (raw.image as any).key) ?? 'none'),
+            size: String((raw.image && typeof raw.image === 'object' && (raw.image as any).size) ?? 'm')
+        },
+        description: raw.description ?? '',
+        address: raw.address ?? {}
+    } as unknown as LabelForm
 
+    return buildZplFromData(data)
+}
+
+function buildZplFromData(data: LabelForm) {
     const templateFile = join('server/templates', `${data.template}-${data.size}.zpl`)
     let zpl: string
     try {
@@ -77,13 +94,9 @@ export function generateZpl(form: LabelForm): string {
         throw new Error(`Could not read template file: ${templateFile}`)
     }
 
-    // Image placeholder handling: try to load converted image ZPL, otherwise empty.
     const imagePlaceholderRegex = /\{\{image\}\}/g
-    if (data.image.key && data.image.key !== 'none') {
-        const imageFile = join(
-            'server/templates/converted-logos',
-            `${data.image.key}_${String(data.image.size)}.zpl`
-        )
+    if (data.image?.key && data.image.key !== 'none') {
+        const imageFile = join('server/templates/converted-logos', `${data.image.key}_${String(data.image.size)}.zpl`)
         try {
             const imageTxt = readFileSync(imageFile, 'utf-8')
             zpl = zpl.replace(imagePlaceholderRegex, imageTxt)
@@ -94,12 +107,10 @@ export function generateZpl(form: LabelForm): string {
         zpl = zpl.replace(imagePlaceholderRegex, '')
     }
 
-    // Replace all placeholders using flattened keys for nested properties.
     const flatData = flattenKeys(data)
     for (const [key, value] of Object.entries(flatData)) {
         const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g')
         zpl = zpl.replace(regex, value)
     }
-
     return zpl
 }
